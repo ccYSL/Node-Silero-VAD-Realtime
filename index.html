@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>VAD Microphone Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        #output { font-size: 18px; margin: 20px 0; padding: 10px; border-radius: 4px; }
+        .speaking { background-color: #fff3cd; color: #856404; }
+        .silence { background-color: #f8f9fa; color: #495057; }
+        #status { margin: 10px 0; font-size: 14px; color: #666; }
+        button { padding: 10px 20px; margin: 5px; font-size: 16px; }
+    </style>
+</head>
+<body>
+    <h1>VAD Test</h1>
+    <div id="status">Connecting to WebSocket...</div>
+    <button id="start">Start Microphone</button>
+    <button id="stop" disabled>Stop</button>
+    <div id="output" class="silence">Probability: --</div>
+    
+    <script>
+        let ws = null;
+        let audioContext = null;
+        let microphone = null;
+        let processor = null;
+        let isConnected = false;
+        
+        const statusDiv = document.getElementById('status');
+        const outputDiv = document.getElementById('output');
+        const startBtn = document.getElementById('start');
+        const stopBtn = document.getElementById('stop');
+        
+        // Auto-connect WebSocket
+        function connectWebSocket() {
+            try {
+                ws = new WebSocket('ws://localhost:3000');
+                
+                ws.onopen = () => {
+                    isConnected = true;
+                    statusDiv.textContent = 'WebSocket: Connected';
+                    startBtn.disabled = false;
+                };
+                
+                ws.onmessage = (event) => {
+                    const data = JSON.parse(event.data);
+                    if (data.error) {
+                        statusDiv.textContent = 'Error: ' + data.error;
+                        return;
+                    }
+                    
+                    const prob = data.probability.toFixed(4);
+                    const speaking = data.speaking ? 'SPEAKING' : 'SILENCE';
+                    outputDiv.textContent = `Probability: ${prob} - ${speaking}`;
+                    outputDiv.className = data.speaking ? 'speaking' : 'silence';
+                };
+                
+                ws.onclose = () => {
+                    isConnected = false;
+                    statusDiv.textContent = 'WebSocket: Disconnected - Reconnecting...';
+                    startBtn.disabled = true;
+                    // Auto-reconnect after 2 seconds
+                    setTimeout(connectWebSocket, 2000);
+                };
+                
+                ws.onerror = (error) => {
+                    statusDiv.textContent = 'WebSocket error - Retrying...';
+                };
+                
+            } catch (error) {
+                statusDiv.textContent = 'Connection error: ' + error.message;
+                setTimeout(connectWebSocket, 2000);
+            }
+        }
+        
+        // Start WebSocket connection immediately
+        connectWebSocket();
+        
+        startBtn.onclick = async () => {
+            if (!isConnected) {
+                statusDiv.textContent = 'WebSocket not connected!';
+                return;
+            }
+            
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                audioContext = new AudioContext({ sampleRate: 8000 });
+                microphone = audioContext.createMediaStreamSource(stream);
+                processor = audioContext.createScriptProcessor(256, 1, 1);
+                
+                processor.onaudioprocess = (event) => {
+                    if (ws && ws.readyState === WebSocket.OPEN) {
+                        const inputData = event.inputBuffer.getChannelData(0);
+                        // Send raw 512 samples - server handles context
+                        ws.send(JSON.stringify(Array.from(inputData)));
+                    }
+                };
+                
+                microphone.connect(processor);
+                processor.connect(audioContext.destination);
+                
+                startBtn.disabled = true;
+                stopBtn.disabled = false;
+                statusDiv.textContent = 'Microphone active - Streaming audio';
+                
+            } catch (error) {
+                statusDiv.textContent = 'Microphone error: ' + error.message;
+            }
+        };
+        
+        stopBtn.onclick = () => {
+            if (processor) processor.disconnect();
+            if (microphone) microphone.disconnect();
+            if (audioContext) audioContext.close();
+            
+            audioContext = null;
+            microphone = null;
+            processor = null;
+            
+            startBtn.disabled = false;
+            stopBtn.disabled = true;
+            statusDiv.textContent = 'Microphone stopped - WebSocket: Connected';
+            outputDiv.textContent = 'Probability: --';
+            outputDiv.className = 'silence';
+        };
+    </script>
+</body>
+</html>
