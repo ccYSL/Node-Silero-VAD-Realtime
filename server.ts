@@ -24,11 +24,11 @@ wss.on("connection", (ws) => {
     context: true,
   })
     .on("SPEECH_STARTED", ({ paddingBuffer }) => {
-      console.log("SPEECH STARTED TWIN");
+      console.log("SPEECH STARTED");
       console.log(paddingBuffer);
     })
     .on("SPEECH_ENDED", ({ fullBuffer }) => {
-      console.log("SPEECH ENDED TWIN");
+      console.log("SPEECH ENDED");
       console.log(fullBuffer);
     });
 
@@ -63,7 +63,7 @@ wss.on("connection", (ws) => {
       console.error("VAD processing error:", error);
       ws.send(
         JSON.stringify({
-          error: error.message,
+          error: "error",
           timestamp: Date.now(),
         })
       );

@@ -1,5 +1,7 @@
 import { InferenceSession, Tensor } from "onnxruntime-node";
 import EventEmitter from "node:events";
+import path from "path";
+import { fileURLToPath } from "node:url";
 
 export type SampleRate = 8000 | 16000;
 
@@ -20,7 +22,12 @@ export interface VADOptions {
   context: boolean;
 }
 
-const session = await InferenceSession.create("silero_vad.onnx");
+
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+const session = await InferenceSession.create(path.join(__dirname, "silero_vad.onnx"));
 
 export interface SileroVADEvents {
   SPEECH_STARTED: { paddingBuffer: Float32Array };
