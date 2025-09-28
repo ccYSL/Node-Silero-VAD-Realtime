@@ -1,12 +1,19 @@
 {
   "name": "silero-realtime-vad",
-  "version": "1.0.0",
-  "main": "index.js",
+  "version": "1.0.2",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "scripts": {
     "build": "tsup"
   },
-  "author": "",
-  "license": "ISC",
+  "author": "cece",
+  "license": "MIT",
+  "keywords": [
+    "VAD",
+    "Silero",
+    "Voice activity detection",
+    "ai"
+  ],
   "type": "module",
   "description": "",
   "dependencies": {
